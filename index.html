@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>足し算ツール</title>
+</head>
+<body>
+  <h2>足し算ツール</h2>
+  <input type="number" id="a" placeholder="数値A">
+  +
+  <input type="number" id="b" placeholder="数値B">
+  <button onclick="calc()">計算</button>
+  <p>結果：<input id="c" readonly></p>
+
+  <script>
+    function calc() {
+      const a = parseFloat(document.getElementById("a").value);
+      const b = parseFloat(document.getElementById("b").value);
+      if (!isNaN(a) && !isNaN(b)) {
+        document.getElementById("c").value = a + b;
+      } else {
+        alert("数値を入力してください");
+      }
+    }
+  </script>
+</body>
+</html>
