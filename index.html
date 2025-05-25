@@ -1,26 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>足し算ツール</title>
+  <title>電気料金比較ツール</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: right;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .left {
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
-  <h2>足し算ツール</h2>
-  <input type="number" id="a" placeholder="数値A">
-  +
-  <input type="number" id="b" placeholder="数値B">
-  <button onclick="calc()">計算</button>
-  <p>結果：<input id="c" readonly></p>
+  <h1>電気料金比較ツール</h1>
+  <label for="usage">使用電力量 (kWh)：</label>
+  <input type="number" id="usage" min="0">
+  <button onclick="calculateCosts()">計算する</button>
+
+  <table id="resultTable">
+  </table>
 
   <script>
-    function calc() {
-      const a = parseFloat(document.getElementById("a").value);
-      const b = parseFloat(document.getElementById("b").value);
-      if (!isNaN(a) && !isNaN(b)) {
-        document.getElementById("c").value = a + b;
-      } else {
-        alert("数値を入力してください");
-      }
+    const companies = [
+      {
+        name: "ソフトバンクでんき",
+        basic: 1100,
+        rates: [17, 22, 24]
+      },
+      {
+        name: "東京電力",
+        basic: 1247,
+        rates: [19.88, 26.48, 30.57]
+      },
+      {
+        name: "東京ガス",
+        basic: 1246.96,
+        rates: [29.7, 35.69, 39.5]
+      },
+      {
+        name: "シン・エナジー",
+        basic: 1061.41,
+        rates: [19.67, 24.78, 27.71]
+      },
+      {
+        name: "CDエナジー",
+        basic: 1107.6,
+        rates: [29.9, 35.59, 36.5]
+      },
+      {
+        name: "オクトパスエナジー",
+        basic: 1164,
+        rates: [18.98, 24.1, 27.44]
+      },
+      {
+        name: "ミツウロコでんき",
+        basic: 1100,
+        rates: [21.43, 22.63, 25.24]
+      },
+      {
+        name: "TERASELでんき",
+        basic: 1100,
+        rates: [29, 35.34, 39.26]
+      },
+      {
+        name: "ドリームでんき",
+        basic: 1086.8,
+        rates: [19.88, 26.48, 30.57]
+      },
+      {
+        name: "新日本エネルギー",
+        basic: 1180.96,
+        rates: [30, 36.23, 39.46]
+      },
+      {
+        name: "Japan電力",
+        basic: 0,
+        calc: (usage) => {
+          if (usage <= 400) return usage * 27;
+          return 400 * 27 + (usage - 400) * 26;
+        }
+      },
+      {
+        name: "大阪ガスの電気",
+        basic: 0,
+        rates: [20.21, 25.2, 28.01]
+      },
+      {
+        name: "Looopでんき",
+        basic: 0,
+        calc: (usage) => usage * 26.4
+      },
+      {
+        name: "コスモでんき",
+        basic: 1100,
+        rates: [19.88, 26.48, 30.57]
+      },
+      {
+        name: "evergreen",
+        basic: 1100,
+        rates: [19.88, 26.48, 30.57]
+      },
+      {
+        name: "しろくま電力",
+        basic: 1180.96,
+        rates: [24.5, 36.4, 40.49]
+      },
+    ];
+
+    function calculateCosts() {
+      const usage = parseFloat(document.getElementById("usage").value);
+      if (isNaN(usage) || usage < 0) return;
+
+      const table = document.getElementById("resultTable");
+      table.innerHTML = "";
+
+      const header = document.createElement("tr");
+      header.innerHTML = "<th class='left'>項目</th>" + companies.map(c => `<th>${c.name}</th>`).join("");
+      table.appendChild(header);
+
+      const basicRow = document.createElement("tr");
+      basicRow.innerHTML = `<td class='left'>基本料金</td>` + companies.map(c => `<td>${c.basic?.toFixed(2) || 0}</td>`).join("");
+      table.appendChild(basicRow);
+
+      const stage1Row = document.createElement("tr");
+      stage1Row.innerHTML = `<td class='left'>第1段階 (0〜120kWh)</td>` + companies.map(c => {
+        if (c.calc) return `<td>${(c.calc(usage) || 0).toFixed(2)}</td>`;
+        const kWh = Math.min(usage, 120);
+        return `<td>${(kWh * c.rates[0]).toFixed(2)}</td>`;
+      }).join("");
+      table.appendChild(stage1Row);
+
+      const stage2Row = document.createElement("tr");
+      stage2Row.innerHTML = `<td class='left'>第2段階 (121〜300kWh)</td>` + companies.map(c => {
+        if (c.calc) return `<td></td>`;
+        const kWh = Math.max(0, Math.min(usage - 120, 180));
+        return `<td>${(kWh * c.rates[1]).toFixed(2)}</td>`;
+      }).join("");
+      table.appendChild(stage2Row);
+
+      const stage3Row = document.createElement("tr");
+      stage3Row.innerHTML = `<td class='left'>第3段階 (301kWh〜)</td>` + companies.map(c => {
+        if (c.calc) return `<td></td>`;
+        const kWh = Math.max(0, usage - 300);
+        return `<td>${(kWh * c.rates[2]).toFixed(2)}</td>`;
+      }).join("");
+      table.appendChild(stage3Row);
     }
   </script>
 </body>
