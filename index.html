@@ -2,13 +2,19 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>電気料金比較ツール</title>
   <style>
+    body {
+      font-size: 16px;
+      font-family: sans-serif;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
       margin-top: 20px;
       min-width: 800px;
+      font-size: 14px;
     }
     th, td {
       border: 1px solid #ccc;
@@ -23,6 +29,9 @@
     }
     .container {
       overflow-x: auto;
+    }
+    input, button {
+      font-size: 16px;
     }
   </style>
 </head>
@@ -64,12 +73,12 @@
       table.innerHTML = "";
 
       const header = document.createElement("tr");
-      header.innerHTML = "<th class='left'>項目</th>" + companies.map(c => `<th>${c.name}</th>`).join("");
+      header.innerHTML = "<th class='left' colspan='2'>項目</th>" + companies.map(c => `<th>${c.name}</th>`).join("");
       table.appendChild(header);
 
       // 合計行
       const totalRow = document.createElement("tr");
-      totalRow.innerHTML = `<td class='left'>合計</td>` + companies.map(c => {
+      totalRow.innerHTML = `<td class='left' colspan='2'>合計</td>` + companies.map(c => {
         if (c.calc) return `<td>${(c.calc(usage)).toFixed(2)}</td>`;
         const stage1 = Math.min(usage, 120) * c.rates[0];
         const stage2 = Math.max(0, Math.min(usage - 120, 180)) * c.rates[1];
