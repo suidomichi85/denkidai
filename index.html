@@ -1,363 +1,161 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>電気料金比較ツール</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 10px;
-  }
-  .table-wrapper {
-    overflow-x: auto;
-    margin-top: 10px;
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 900px;
-    font-size: 16px;
-  }
-  th, td {
-    border: 1px solid #999;
-    padding: 6px 10px;
-    text-align: right;
-    white-space: nowrap;
-  }
-  th {
-    background-color: #eee;
-  }
-  th:first-child, td:first-child {
-    text-align: left;
-  }
-  th:nth-child(2), td:nth-child(2) {
-    text-align: center;
-    font-weight: bold;
-  }
-  input[type="number"] {
-    font-size: 16px;
-    padding: 6px;
-    width: 100px;
-  }
-  button {
-    font-size: 16px;
-    padding: 6px 12px;
-    margin-left: 10px;
-  }
-</style>
-</head>
-<body>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; text-align: center; white-space: nowrap;">
+  <tbody>
+    <!-- 1行目 -->
+    <tr>
+      <td rowspan="7" colspan="2" style="vertical-align: middle; font-weight: bold; background:#eee;">項目</td>
+      <td style="background:#ddd;">東京電力</td>
+      <td style="background:#ddd;">ソフトバンクでんき</td>
+      <td style="background:#ddd;">ドコモでんき</td>
+      <td style="background:#ddd;">auでんき</td>
+      <td style="background:#ddd;">楽天でんき</td>
+      <td style="background:#ddd;">J:COM電力</td>
+      <td style="background:#ddd;">東京ガスの電気</td>
+      <td style="background:#ddd;">コープデリでんき</td>
+      <td style="background:#ddd;">イオンでんき</td>
+      <td style="background:#ddd;">ヤマダのでんき</td>
+      <td style="background:#ddd;">Looopでんき</td>
+      <td style="background:#ddd;">TERASELでんき</td>
+      <td style="background:#ddd;">ENEOSでんき</td>
+      <td style="background:#ddd;">しろくま電力</td>
+      <td style="background:#ddd;">CDエナジー</td>
+      <td style="background:#ddd;">HTBエナジー</td>
+      <td style="background:#ddd;">アースインフィニティ</td>
+    </tr>
 
-<h2>電気料金比較ツール</h2>
-<label for="usage">使用電力量 (kWh): </label>
-<input type="number" id="usage" min="0" value="350" />
-<button onclick="calculate()">計算する</button>
+    <!-- 2行目 -->
+    <tr>
+      <td rowspan="3" style="background:#eee;">合計</td>
+      <td>1200</td>
+      <td>1150</td>
+      <td>1180</td>
+      <td>1170</td>
+      <td>1100</td>
+      <td>1120</td>
+      <td>1140</td>
+      <td>1110</td>
+      <td>1090</td>
+      <td>1130</td>
+      <td>1080</td>
+      <td>1050</td>
+      <td>1115</td>
+      <td>1070</td>
+      <td>1065</td>
+      <td>1095</td>
+      <td>1105</td>
+      <td>1085</td>
+    </tr>
 
-<div class="table-wrapper">
-  <table id="resultTable">
-    <!-- 表はJavaScriptで生成 -->
-  </table>
-</div>
+    <!-- 3行目 -->
+    <tr>
+      <td>第1段階</td>
+      <td>400</td>
+      <td>380</td>
+      <td>390</td>
+      <td>385</td>
+      <td>360</td>
+      <td>370</td>
+      <td>375</td>
+      <td>365</td>
+      <td>350</td>
+      <td>370</td>
+      <td>340</td>
+      <td>330</td>
+      <td>360</td>
+      <td>335</td>
+      <td>325</td>
+      <td>345</td>
+      <td>350</td>
+      <td>335</td>
+    </tr>
 
-<script>
-  // 電力会社のデータ（基本料金＋3段階単価＋燃料調整費、再エネ賦課金の単価）
-  // 燃料調整費と再エネ賦課金は1kWhあたりの料金（例: 2.5円など）
-  const companies = [
-    {
-      name: "東京電力",
-      basic: 1430,
-      rates: [19, 26, 30],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "ソフトバンクでんき",
-      basic: 0,
-      rates: [17, 22, 24],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "ドコモでんき",
-      basic: 0,
-      rates: [17, 22, 24],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "auでんき",
-      basic: 0,
-      rates: [18, 23, 25],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "楽天でんき",
-      basic: 0,
-      rates: [23, 23, 23],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "J:COM電力",
-      basic: 1100,
-      rates: [21, 25, 28],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "東京ガスの電気",
-      basic: 0,
-      rates: [19, 24, 27],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "コープデリでんき",
-      basic: 0,
-      rates: [18, 23, 26],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "イオンでんき",
-      basic: 0,
-      rates: [19, 22, 24],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "ヤマダのでんき",
-      basic: 0,
-      rates: [18, 23, 25],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "Looopでんき",
-      basic: 0,
-      rates: [26, 26, 26],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "TERASELでんき",
-      basic: 0,
-      rates: [21, 24, 27],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "ENEOSでんき",
-      basic: 0,
-      rates: [21, 24, 27],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "しろくま電力",
-      basic: 0,
-      rates: [21, 24, 27],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "CDエナジー",
-      basic: 0,
-      rates: [20, 23, 26],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "HTBエナジー",
-      basic: 0,
-      rates: [20, 23, 26],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    },
-    {
-      name: "アースインフィニティ",
-      basic: 0,
-      rates: [20, 23, 26],
-      fuelAdjustment: 2.5,
-      renewableFee: 3.36
-    }
-  ];
+    <!-- 4行目 -->
+    <tr>
+      <td>第2段階</td>
+      <td>400</td>
+      <td>390</td>
+      <td>395</td>
+      <td>390</td>
+      <td>370</td>
+      <td>375</td>
+      <td>380</td>
+      <td>370</td>
+      <td>360</td>
+      <td>375</td>
+      <td>355</td>
+      <td>345</td>
+      <td>370</td>
+      <td>340</td>
+      <td>335</td>
+      <td>355</td>
+      <td>360</td>
+      <td>345</td>
+    </tr>
 
-  function calculate() {
-    const usage = Number(document.getElementById('usage').value);
-    if (isNaN(usage) || usage < 0) {
-      alert('正しい使用電力量を入力してください');
-      return;
-    }
+    <!-- 5行目 -->
+    <tr>
+      <td>第3段階</td>
+      <td>400</td>
+      <td>380</td>
+      <td>395</td>
+      <td>395</td>
+      <td>370</td>
+      <td>375</td>
+      <td>385</td>
+      <td>375</td>
+      <td>380</td>
+      <td>385</td>
+      <td>385</td>
+      <td>375</td>
+      <td>385</td>
+      <td>400</td>
+      <td>405</td>
+      <td>395</td>
+      <td>395</td>
+      <td>405</td>
+    </tr>
 
-    // 料金計算のための段階区切り(kWh)
-    const tierLimits = [120, 180, Infinity]; // 1段階120kWh、2段階180kWh(121～300)、3段階301kWh～
+    <!-- 6行目 -->
+    <tr>
+      <td colspan="2" style="background:#eee;">燃料調整費</td>
+      <td>350</td>
+      <td>340</td>
+      <td>345</td>
+      <td>340</td>
+      <td>330</td>
+      <td>335</td>
+      <td>338</td>
+      <td>333</td>
+      <td>325</td>
+      <td>335</td>
+      <td>320</td>
+      <td>310</td>
+      <td>330</td>
+      <td>320</td>
+      <td>315</td>
+      <td>320</td>
+      <td>325</td>
+    </tr>
 
-    // 表作成開始
-    const table = document.getElementById('resultTable');
-    table.innerHTML = ''; // クリア
-
-    // 1行目
-    const tr1 = document.createElement('tr');
-    const thItem = document.createElement('th');
-    thItem.rowSpan = 7;
-    thItem.textContent = "項目";
-    tr1.appendChild(thItem);
-
-    const thTotal = document.createElement('th');
-    thTotal.rowSpan = 7;
-    thTotal.textContent = "合計";
-    tr1.appendChild(thTotal);
-
-    // 電力会社名をヘッダーに追加（3行目以降と合わせてcolspanしない）
-    companies.forEach(company => {
-      const th = document.createElement('th');
-      th.textContent = company.name;
-      tr1.appendChild(th);
-    });
-    table.appendChild(tr1);
-
-    // 2行目 (空行扱いは不要なのでなし)
-
-    // 3～5行目：内訳3行分
-    // ここは「内訳」セルは1列目の7行結合のため省略（1列目はrowspan7にしました）
-    // 2列目は段階別料金
-
-    // 第1段階料金計算関数
-    function calcTierFee(kwh, rate) {
-      return kwh * rate;
-    }
-
-    // 電力量の各段階ごとの消費量計算
-    function splitUsage(usage) {
-      let tier1 = Math.min(usage, 120);
-      let tier2 = Math.min(Math.max(usage - 120, 0), 180);
-      let tier3 = Math.max(usage - 300, 0);
-      return [tier1, tier2, tier3];
-    }
-
-    const usageSplit = splitUsage(usage);
-
-    // 内訳の段階名
-    const tiers = ["第1段階", "第2段階", "第3段階"];
-
-    tiers.forEach((tierName, idx) => {
-      const tr = document.createElement('tr');
-
-      // 2列目は段階名
-      const tdTier = document.createElement('td');
-      tdTier.textContent = tierName;
-      tdTier.style.fontWeight = 'bold';
-      tdTier.style.textAlign = 'center';
-      tr.appendChild(tdTier);
-
-      // 各社の料金計算
-      companies.forEach(company => {
-        const tierKwh = usageSplit[idx];
-        const fee = company.basic + company.rates[idx] * tierKwh;
-        // ここでは基本料金を含めないで段階別料金だけ出したいので、
-        // 代わりに段階分だけにするため下記に変更:
-        const stepFee = company.rates[idx] * tierKwh;
-        const td = document.createElement('td');
-        td.textContent = stepFee.toFixed(0);
-        tr.appendChild(td);
-      });
-
-      table.appendChild(tr);
-    });
-
-    // 燃料調整費行
-    const fuelTr = document.createElement('tr');
-    const fuelTd1 = document.createElement('td');
-    fuelTd1.textContent = "燃料調整費";
-    fuelTr.appendChild(fuelTd1);
-
-    const fuelTd2 = document.createElement('td');
-    fuelTd2.style.fontWeight = 'bold';
-    fuelTd2.style.textAlign = 'center';
-    fuelTd2.textContent = "";
-    fuelTr.appendChild(fuelTd2);
-
-    companies.forEach(company => {
-      const val = (usage * company.fuelAdjustment).toFixed(0);
-      const td = document.createElement('td');
-      td.textContent = val;
-      fuelTr.appendChild(td);
-    });
-    table.appendChild(fuelTr);
-
-    // 再エネ賦課金行
-    const reeneTr = document.createElement('tr');
-    const reeneTd1 = document.createElement('td');
-    reeneTd1.textContent = "再エネ賦課金";
-    reeneTr.appendChild(reeneTd1);
-
-    const reeneTd2 = document.createElement('td');
-    reeneTd2.style.fontWeight = 'bold';
-    reeneTd2.style.textAlign = 'center';
-    reeneTd2.textContent = "";
-    reeneTr.appendChild(reeneTd2);
-
-    companies.forEach(company => {
-      const val = (usage * company.renewableFee).toFixed(0);
-      const td = document.createElement('td');
-      td.textContent = val;
-      reeneTr.appendChild(td);
-    });
-    table.appendChild(reeneTr);
-
-    // 合計金額を計算して2列目の合計セルに反映
-    // 合計＝基本料金＋全段階合計＋燃料調整費＋再エネ賦課金
-
-    // ここで2列目の合計セルを操作（1行目のthTotalはrowSpan7なので同じセル）
-    const totalCell = tr1.children[1];
-
-    let totalHtml = '';
-    companies.forEach(company => {
-      // 基本料金＋段階料金合計
-      const tierSum = usageSplit.reduce((sum, kwh, idx) => sum + company.rates[idx] * kwh, 0);
-      const fuelFee = usage * company.fuelAdjustment;
-      const reeneFee = usage * company.renewableFee;
-      const total = company.basic + tierSum + fuelFee + reeneFee;
-      totalHtml += `<td>${total.toFixed(0)}</td>`;
-    });
-
-    // totalCellはthなので中にtdは入れられないため、合計セルは表示しません。  
-    // 代わりに合計金額を新しく1行目の後ろに表示します。
-
-    // 合計行作成
-    const totalRow = document.createElement('tr');
-
-    // 1列目に空セル（項目のrowspan7により1列目は空）
-    const emptyTd = document.createElement('td');
-    totalRow.appendChild(emptyTd);
-
-    // 2列目に合計ラベル（「合計」）
-    const totalLabelTd = document.createElement('td');
-    totalLabelTd.textContent = "合計金額";
-    totalLabelTd.style.fontWeight = "bold";
-    totalLabelTd.style.textAlign = "center";
-    totalRow.appendChild(totalLabelTd);
-
-    // 電力会社別合計金額
-    companies.forEach(company => {
-      const tierSum = usageSplit.reduce((sum, kwh, idx) => sum + company.rates[idx] * kwh, 0);
-      const fuelFee = usage * company.fuelAdjustment;
-      const reeneFee = usage * company.renewableFee;
-      const total = company.basic + tierSum + fuelFee + reeneFee;
-      const td = document.createElement('td');
-      td.textContent = total.toFixed(0);
-      totalRow.appendChild(td);
-    });
-
-    table.insertBefore(totalRow, table.children[1]); // 1行目の次に合計行を挿入
-
-    // 基本料金行（1列目と2列目はrowspanでまとめるのでここには表示しない）
-    // 代わりに基本料金は合計金額からも分かるため今回は割愛しています。
-  }
-</script>
-
-</body>
-</html>
+    <!-- 7行目 -->
+    <tr>
+      <td colspan="2" style="background:#eee;">再エネ賦課金</td>
+      <td>50</td>
+      <td>48</td>
+      <td>49</td>
+      <td>48</td>
+      <td>45</td>
+      <td>46</td>
+      <td>47</td>
+      <td>46</td>
+      <td>44</td>
+      <td>46</td>
+      <td>43</td>
+      <td>42</td>
+      <td>45</td>
+      <td>43</td>
+      <td>43</td>
+      <td>44</td>
+      <td>45</td>
+    </tr>
+  </tbody>
+</table>
