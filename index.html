@@ -47,24 +47,26 @@
 
   <script>
     const companies = [
-      { name: "ソフトバンクでんき", basic: 1100, rates: [17, 22, 24] },
-      { name: "東京電力", basic: 1247, rates: [19.88, 26.48, 30.57] },
-      { name: "東京ガス", basic: 1246.96, rates: [29.7, 35.69, 39.5] },
-      { name: "シン・エナジー", basic: 1061.41, rates: [19.67, 24.78, 27.71] },
-      { name: "CDエナジー", basic: 1107.6, rates: [29.9, 35.59, 36.5] },
-      { name: "オクトパスエナジー", basic: 1164, rates: [18.98, 24.1, 27.44] },
-      { name: "ミツウロコでんき", basic: 1100, rates: [21.43, 22.63, 25.24] },
-      { name: "TERASELでんき", basic: 1100, rates: [29, 35.34, 39.26] },
-      { name: "ドリームでんき", basic: 1086.8, rates: [19.88, 26.48, 30.57] },
-      { name: "新日本エネルギー", basic: 1180.96, rates: [30, 36.23, 39.46] },
-      { name: "Japan電力", basic: 0, calc: (usage) => usage <= 400 ? usage * 27 : 400 * 27 + (usage - 400) * 26 },
-      { name: "大阪ガスの電気", basic: 0, rates: [20.21, 25.2, 28.01] },
-      { name: "Looopでんき", basic: 0, calc: (usage) => usage * 26.4 },
-      { name: "コスモでんき", basic: 1100, rates: [19.88, 26.48, 30.57] },
-      { name: "evergreen", basic: 1100, rates: [19.88, 26.48, 30.57] },
-      { name: "しろくま電力", basic: 1180.96, rates: [24.5, 36.4, 40.49] },
-      { name: "楽天でんき", basic: 0, rates: [26.5, 26.5, 26.5] },
+      { name: "ソフトバンクでんき", basic: 1100, rates: [17, 22, 24], fuelAdjustment: 2.5 },
+      { name: "東京電力", basic: 1247, rates: [19.88, 26.48, 30.57], fuelAdjustment: 2.5 },
+      { name: "東京ガス", basic: 1246.96, rates: [29.7, 35.69, 39.5], fuelAdjustment: 2.5 },
+      { name: "シン・エナジー", basic: 1061.41, rates: [19.67, 24.78, 27.71], fuelAdjustment: 2.5 },
+      { name: "CDエナジー", basic: 1107.6, rates: [29.9, 35.59, 36.5], fuelAdjustment: 2.5 },
+      { name: "オクトパスエナジー", basic: 1164, rates: [18.98, 24.1, 27.44], fuelAdjustment: 2.5 },
+      { name: "ミツウロコでんき", basic: 1100, rates: [21.43, 22.63, 25.24], fuelAdjustment: 2.5 },
+      { name: "TERASELでんき", basic: 1100, rates: [29, 35.34, 39.26], fuelAdjustment: 2.5 },
+      { name: "ドリームでんき", basic: 1086.8, rates: [19.88, 26.48, 30.57], fuelAdjustment: 2.5 },
+      { name: "新日本エネルギー", basic: 1180.96, rates: [30, 36.23, 39.46], fuelAdjustment: 2.5 },
+      { name: "Japan電力", basic: 0, calc: (usage) => usage <= 400 ? usage * 27 : 400 * 27 + (usage - 400) * 26, fuelAdjustment: 2.5 },
+      { name: "大阪ガスの電気", basic: 0, rates: [20.21, 25.2, 28.01], fuelAdjustment: 2.5 },
+      { name: "Looopでんき", basic: 0, calc: (usage) => usage * 26.4, fuelAdjustment: 2.5 },
+      { name: "コスモでんき", basic: 1100, rates: [19.88, 26.48, 30.57], fuelAdjustment: 2.5 },
+      { name: "evergreen", basic: 1100, rates: [19.88, 26.48, 30.57], fuelAdjustment: 2.5 },
+      { name: "しろくま電力", basic: 1180.96, rates: [24.5, 36.4, 40.49], fuelAdjustment: 2.5 },
+      { name: "楽天でんき", basic: 0, rates: [26.5, 26.5, 26.5], fuelAdjustment: 2.5 },
     ];
+
+    const renewableLevy = 3.98; // 再エネ賦課金単価（円/kWh）
 
     function calculateCosts() {
       const usage = parseFloat(document.getElementById("usage").value);
@@ -80,32 +82,51 @@
       // 合計行
       const totalRow = document.createElement("tr");
       totalRow.innerHTML = `<td class='left' colspan='2'>合計</td>` + companies.map(c => {
-        if (c.calc) return `<td>${(c.calc(usage)).toFixed(2)}</td>`;
+        if (c.calc) {
+          const base = c.calc(usage);
+          const fuel = usage * c.fuelAdjustment;
+          const renewable = usage * renewableLevy;
+          const total = base + fuel + renewable;
+          return `<td>${total.toFixed(2)}</td>`;
+        }
         const stage1 = Math.min(usage, 120) * c.rates[0];
         const stage2 = Math.max(0, Math.min(usage - 120, 180)) * c.rates[1];
         const stage3 = Math.max(0, usage - 300) * c.rates[2];
-        const total = c.basic + stage1 + stage2 + stage3;
+        const fuel = usage * c.fuelAdjustment;
+        const renewable = usage * renewableLevy;
+        const total = c.basic + stage1 + stage2 + stage3 + fuel + renewable;
         return `<td>${total.toFixed(2)}</td>`;
       }).join("");
       table.appendChild(totalRow);
 
       // 内訳と基本料金〜第3段階を一括で作成
-      const labels = ["基本料金", "第1段階 (0〜120kWh)", "第2段階 (121〜300kWh)", "第3段階 (301kWh〜)"];
+      const labels = ["基本料金", "第1段階 (0〜120kWh)", "第2段階 (121〜300kWh)", "第3段階 (301kWh〜)", "燃料費調整額", "再エネ賦課金"];
 
       labels.forEach((label, index) => {
         const row = document.createElement("tr");
         if (index === 0) {
-          row.innerHTML = `<td class='left' rowspan="4">内訳</td><td class='left'>${label}</td>` + companies.map(c => {
+          row.innerHTML = `<td class='left' rowspan="${labels.length}">内訳</td><td class='left'>${label}</td>` + companies.map(c => {
             if (label === "基本料金") return `<td>${c.basic?.toFixed(2) || 0}</td>`;
           }).join("");
         } else {
           row.innerHTML = `<td class='left'>${label}</td>` + companies.map(c => {
-            if (c.calc) return `<td></td>`;
+            if (c.calc) {
+              if (label === "燃料費調整額") return `<td>${(usage * c.fuelAdjustment).toFixed(2)}</td>`;
+              if (label === "再エネ賦課金") return `<td>${(usage * renewableLevy).toFixed(2)}</td>`;
+              return `<td></td>`;
+            }
             const kWh =
               index === 1 ? Math.min(usage, 120) :
               index === 2 ? Math.max(0, Math.min(usage - 120, 180)) :
-              Math.max(0, usage - 300);
-            return `<td>${(kWh * c.rates[index - 1]).toFixed(2)}</td>`;
+              index === 3 ? Math.max(0, usage - 300) : 0;
+            if (index >= 1 && index <= 3) {
+              return `<td>${(kWh * c.rates[index - 1]).toFixed(2)}</td>`;
+            } else if (label === "燃料費調整額") {
+              return `<td>${(usage * c.fuelAdjustment).toFixed(2)}</td>`;
+            } else if (label === "再エネ賦課金") {
+              return `<td>${(usage * renewableLevy).toFixed(2)}</td>`;
+            }
+            return `<td></td>`;
           }).join("");
         }
         table.appendChild(row);
