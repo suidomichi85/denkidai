@@ -7,337 +7,356 @@
 <style>
   body {
     font-family: Arial, sans-serif;
-    padding: 1em;
-  }
-  input[type="number"] {
-    font-size: 1.2em;
-    padding: 0.3em;
-    width: 100px;
-  }
-  button {
-    font-size: 1.2em;
-    padding: 0.4em 1em;
-    margin-left: 0.5em;
-    cursor: pointer;
+    padding: 10px;
   }
   .table-wrapper {
     overflow-x: auto;
-    margin-top: 1em;
+    margin-top: 10px;
   }
   table {
     border-collapse: collapse;
     width: 100%;
     min-width: 900px;
+    font-size: 16px;
   }
   th, td {
-    border: 1px solid #888;
-    padding: 8px 12px;
-    text-align: center;
-    font-size: 1.1em;
+    border: 1px solid #999;
+    padding: 6px 10px;
+    text-align: right;
+    white-space: nowrap;
   }
   th {
     background-color: #eee;
-    position: sticky;
-    top: 0;
-    z-index: 1;
   }
-  .left-col {
+  th:first-child, td:first-child {
+    text-align: left;
+  }
+  th:nth-child(2), td:nth-child(2) {
+    text-align: center;
     font-weight: bold;
-    background-color: #f9f9f9;
-    width: 80px;
   }
-  /* 縦結合したセルの中央寄せ */
-  .vertical-merge {
-    vertical-align: middle;
+  input[type="number"] {
+    font-size: 16px;
+    padding: 6px;
+    width: 100px;
   }
-  @media (max-width: 600px) {
-    th, td {
-      font-size: 1.3em;
-      padding: 10px 14px;
-    }
-    input[type="number"] {
-      width: 140px;
-      font-size: 1.4em;
-    }
-    button {
-      font-size: 1.4em;
-      padding: 0.5em 1.2em;
-    }
+  button {
+    font-size: 16px;
+    padding: 6px 12px;
+    margin-left: 10px;
   }
 </style>
 </head>
 <body>
 
 <h2>電気料金比較ツール</h2>
-<label for="usage">使用電力量 (kWh)：</label>
+<label for="usage">使用電力量 (kWh): </label>
 <input type="number" id="usage" min="0" value="350" />
 <button onclick="calculate()">計算する</button>
 
-<div class="table-wrapper" id="result"></div>
+<div class="table-wrapper">
+  <table id="resultTable">
+    <!-- 表はJavaScriptで生成 -->
+  </table>
+</div>
 
 <script>
-  // 電力会社データ（基本料金は円/月、段階料金は円/kWh）
+  // 電力会社のデータ（基本料金＋3段階単価＋燃料調整費、再エネ賦課金の単価）
+  // 燃料調整費と再エネ賦課金は1kWhあたりの料金（例: 2.5円など）
   const companies = [
     {
       name: "東京電力",
-      basic: 1320,
-      tiers: [
-        { max: 120, rate: 19.88 },
-        { max: 300, rate: 26.48 },
-        { max: Infinity, rate: 30.57 }
-      ],
-      fuelAdjustment: 1.35,  // 仮の燃料調整費（円/kWh）
-      reEnergyCharge: 3.45   // 再エネ賦課金（円/kWh）
+      basic: 1430,
+      rates: [19, 26, 30],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "ソフトバンクでんき",
       basic: 0,
-      tiers: [
-        { max: 120, rate: 17 },
-        { max: 300, rate: 22 },
-        { max: Infinity, rate: 24 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [17, 22, 24],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "ドコモでんき",
       basic: 0,
-      tiers: [
-        { max: 120, rate: 18 },
-        { max: 300, rate: 23 },
-        { max: Infinity, rate: 25 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [17, 22, 24],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "auでんき",
       basic: 0,
-      tiers: [
-        { max: 120, rate: 17.5 },
-        { max: 300, rate: 22.5 },
-        { max: Infinity, rate: 24.5 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [18, 23, 25],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "楽天でんき",
       basic: 0,
-      tiers: [
-        { max: Infinity, rate: 26.5 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [23, 23, 23],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "J:COM電力",
-      basic: 880,
-      tiers: [
-        { max: 120, rate: 20 },
-        { max: 300, rate: 25 },
-        { max: Infinity, rate: 28 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 1100,
+      rates: [21, 25, 28],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "東京ガスの電気",
-      basic: 1100,
-      tiers: [
-        { max: 120, rate: 19 },
-        { max: 300, rate: 24 },
-        { max: Infinity, rate: 27 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [19, 24, 27],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "コープデリでんき",
-      basic: 770,
-      tiers: [
-        { max: 120, rate: 18 },
-        { max: 300, rate: 23 },
-        { max: Infinity, rate: 26 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [18, 23, 26],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "イオンでんき",
       basic: 0,
-      tiers: [
-        { max: Infinity, rate: 27 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [19, 22, 24],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "ヤマダのでんき",
-      basic: 880,
-      tiers: [
-        { max: 120, rate: 19.5 },
-        { max: 300, rate: 24.5 },
-        { max: Infinity, rate: 27.5 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [18, 23, 25],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "Looopでんき",
       basic: 0,
-      tiers: [
-        { max: Infinity, rate: 26.4 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [26, 26, 26],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "TERASELでんき",
       basic: 0,
-      tiers: [
-        { max: 120, rate: 18 },
-        { max: 300, rate: 22 },
-        { max: Infinity, rate: 25 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [21, 24, 27],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "ENEOSでんき",
-      basic: 880,
-      tiers: [
-        { max: 120, rate: 20 },
-        { max: 300, rate: 25 },
-        { max: Infinity, rate: 28 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [21, 24, 27],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "しろくま電力",
       basic: 0,
-      tiers: [
-        { max: Infinity, rate: 27 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      rates: [21, 24, 27],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "CDエナジー",
-      basic: 770,
-      tiers: [
-        { max: 120, rate: 19 },
-        { max: 300, rate: 24 },
-        { max: Infinity, rate: 26 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [20, 23, 26],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "HTBエナジー",
-      basic: 770,
-      tiers: [
-        { max: 120, rate: 18.5 },
-        { max: 300, rate: 23.5 },
-        { max: Infinity, rate: 26.5 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [20, 23, 26],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     },
     {
       name: "アースインフィニティ",
-      basic: 880,
-      tiers: [
-        { max: 120, rate: 19 },
-        { max: 300, rate: 23 },
-        { max: Infinity, rate: 26 }
-      ],
-      fuelAdjustment: 1.35,
-      reEnergyCharge: 3.45
+      basic: 0,
+      rates: [20, 23, 26],
+      fuelAdjustment: 2.5,
+      renewableFee: 3.36
     }
   ];
 
   function calculate() {
-    const usage = Number(document.getElementById("usage").value);
+    const usage = Number(document.getElementById('usage').value);
     if (isNaN(usage) || usage < 0) {
-      alert("0以上の使用電力量を入力してください。");
+      alert('正しい使用電力量を入力してください');
       return;
     }
 
-    // 電力量ごとの料金計算（3段階に分けて計算）
-    function calcTierCost(tiers, usage) {
-      let remaining = usage;
-      const costs = [];
-      let lastMax = 0;
-      for (const tier of tiers) {
-        let used = 0;
-        if (remaining > 0) {
-          used = Math.min(remaining, tier.max - lastMax);
-          remaining -= used;
-        }
-        costs.push({ used, cost: used * tier.rate });
-        lastMax = tier.max;
-      }
-      return costs;
+    // 料金計算のための段階区切り(kWh)
+    const tierLimits = [120, 180, Infinity]; // 1段階120kWh、2段階180kWh(121～300)、3段階301kWh～
+
+    // 表作成開始
+    const table = document.getElementById('resultTable');
+    table.innerHTML = ''; // クリア
+
+    // 1行目
+    const tr1 = document.createElement('tr');
+    const thItem = document.createElement('th');
+    thItem.rowSpan = 7;
+    thItem.textContent = "項目";
+    tr1.appendChild(thItem);
+
+    const thTotal = document.createElement('th');
+    thTotal.rowSpan = 7;
+    thTotal.textContent = "合計";
+    tr1.appendChild(thTotal);
+
+    // 電力会社名をヘッダーに追加（3行目以降と合わせてcolspanしない）
+    companies.forEach(company => {
+      const th = document.createElement('th');
+      th.textContent = company.name;
+      tr1.appendChild(th);
+    });
+    table.appendChild(tr1);
+
+    // 2行目 (空行扱いは不要なのでなし)
+
+    // 3～5行目：内訳3行分
+    // ここは「内訳」セルは1列目の7行結合のため省略（1列目はrowspan7にしました）
+    // 2列目は段階別料金
+
+    // 第1段階料金計算関数
+    function calcTierFee(kwh, rate) {
+      return kwh * rate;
     }
 
-    // HTMLテーブル作成
-    let html = `<table><thead><tr><th></th><th colspan="2">内訳</th>`;
+    // 電力量の各段階ごとの消費量計算
+    function splitUsage(usage) {
+      let tier1 = Math.min(usage, 120);
+      let tier2 = Math.min(Math.max(usage - 120, 0), 180);
+      let tier3 = Math.max(usage - 300, 0);
+      return [tier1, tier2, tier3];
+    }
 
-    for (const company of companies) {
-      html += `<th colspan="2">${company.name}</th>`;
-    }
-    html += `</tr><tr><th>合計 (円)</th><th colspan="2"></th>`;
-    for (const company of companies) {
-      // 合計計算
-      const tierCosts = calcTierCost(company.tiers, usage);
-      const tierSum = tierCosts.reduce((sum, t) => sum + t.cost, 0);
-      const fuelCharge = usage * company.fuelAdjustment;
-      const reCharge = usage * company.reEnergyCharge;
-      const total = company.basic + tierSum + fuelCharge + reCharge;
-      html += `<th colspan="2">${total.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}</th>`;
-    }
-    html += `</tr><tr><th>内訳</th><td rowspan="5" class="vertical-merge">基本料金から<br>第3段階料金まで</td><td rowspan="5" class="vertical-merge"></td>`;
+    const usageSplit = splitUsage(usage);
 
-    for (const company of companies) {
-      // 空セル：基本料金・第一段階・第二段階・第三段階で2列ずつ必要なので基本料金と3段階はここで書く
-      html += `<td>基本料金</td><td>${company.basic.toLocaleString()}円</td>`;
-    }
-    html += `</tr><tr>`;
-    for (const company of companies) {
-      const tierCosts = calcTierCost(company.tiers, usage);
-      html += `<td>第1段階</td><td>${tierCosts[0].cost.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}円</td>`;
-    }
-    html += `</tr><tr>`;
-    for (const company of companies) {
-      const tierCosts = calcTierCost(company.tiers, usage);
-      html += `<td>第2段階</td><td>${tierCosts[1] ? tierCosts[1].cost.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) : '0'}円</td>`;
-    }
-    html += `</tr><tr>`;
-    for (const company of companies) {
-      const tierCosts = calcTierCost(company.tiers, usage);
-      html += `<td>第3段階</td><td>${tierCosts[2] ? tierCosts[2].cost.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}) : '0'}円</td>`;
-    }
-    html += `</tr><tr>`;
-    for (const company of companies) {
-      // 燃料調整費
-      const fuel = usage * company.fuelAdjustment;
-      html += `<td>燃料調整費</td><td>${fuel.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}円</td>`;
-    }
-    html += `</tr><tr>`;
-    html += `<th>再エネ賦課金 (円)</th><th colspan="2"></th>`;
-    for (const company of companies) {
-      const reCharge = usage * company.reEnergyCharge;
-      html += `<td>再エネ賦課金</td><td>${reCharge.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}円</td>`;
-    }
-    html += `</tr></thead></table>`;
+    // 内訳の段階名
+    const tiers = ["第1段階", "第2段階", "第3段階"];
 
-    document.getElementById("result").innerHTML = html;
+    tiers.forEach((tierName, idx) => {
+      const tr = document.createElement('tr');
+
+      // 2列目は段階名
+      const tdTier = document.createElement('td');
+      tdTier.textContent = tierName;
+      tdTier.style.fontWeight = 'bold';
+      tdTier.style.textAlign = 'center';
+      tr.appendChild(tdTier);
+
+      // 各社の料金計算
+      companies.forEach(company => {
+        const tierKwh = usageSplit[idx];
+        const fee = company.basic + company.rates[idx] * tierKwh;
+        // ここでは基本料金を含めないで段階別料金だけ出したいので、
+        // 代わりに段階分だけにするため下記に変更:
+        const stepFee = company.rates[idx] * tierKwh;
+        const td = document.createElement('td');
+        td.textContent = stepFee.toFixed(0);
+        tr.appendChild(td);
+      });
+
+      table.appendChild(tr);
+    });
+
+    // 燃料調整費行
+    const fuelTr = document.createElement('tr');
+    const fuelTd1 = document.createElement('td');
+    fuelTd1.textContent = "燃料調整費";
+    fuelTr.appendChild(fuelTd1);
+
+    const fuelTd2 = document.createElement('td');
+    fuelTd2.style.fontWeight = 'bold';
+    fuelTd2.style.textAlign = 'center';
+    fuelTd2.textContent = "";
+    fuelTr.appendChild(fuelTd2);
+
+    companies.forEach(company => {
+      const val = (usage * company.fuelAdjustment).toFixed(0);
+      const td = document.createElement('td');
+      td.textContent = val;
+      fuelTr.appendChild(td);
+    });
+    table.appendChild(fuelTr);
+
+    // 再エネ賦課金行
+    const reeneTr = document.createElement('tr');
+    const reeneTd1 = document.createElement('td');
+    reeneTd1.textContent = "再エネ賦課金";
+    reeneTr.appendChild(reeneTd1);
+
+    const reeneTd2 = document.createElement('td');
+    reeneTd2.style.fontWeight = 'bold';
+    reeneTd2.style.textAlign = 'center';
+    reeneTd2.textContent = "";
+    reeneTr.appendChild(reeneTd2);
+
+    companies.forEach(company => {
+      const val = (usage * company.renewableFee).toFixed(0);
+      const td = document.createElement('td');
+      td.textContent = val;
+      reeneTr.appendChild(td);
+    });
+    table.appendChild(reeneTr);
+
+    // 合計金額を計算して2列目の合計セルに反映
+    // 合計＝基本料金＋全段階合計＋燃料調整費＋再エネ賦課金
+
+    // ここで2列目の合計セルを操作（1行目のthTotalはrowSpan7なので同じセル）
+    const totalCell = tr1.children[1];
+
+    let totalHtml = '';
+    companies.forEach(company => {
+      // 基本料金＋段階料金合計
+      const tierSum = usageSplit.reduce((sum, kwh, idx) => sum + company.rates[idx] * kwh, 0);
+      const fuelFee = usage * company.fuelAdjustment;
+      const reeneFee = usage * company.renewableFee;
+      const total = company.basic + tierSum + fuelFee + reeneFee;
+      totalHtml += `<td>${total.toFixed(0)}</td>`;
+    });
+
+    // totalCellはthなので中にtdは入れられないため、合計セルは表示しません。  
+    // 代わりに合計金額を新しく1行目の後ろに表示します。
+
+    // 合計行作成
+    const totalRow = document.createElement('tr');
+
+    // 1列目に空セル（項目のrowspan7により1列目は空）
+    const emptyTd = document.createElement('td');
+    totalRow.appendChild(emptyTd);
+
+    // 2列目に合計ラベル（「合計」）
+    const totalLabelTd = document.createElement('td');
+    totalLabelTd.textContent = "合計金額";
+    totalLabelTd.style.fontWeight = "bold";
+    totalLabelTd.style.textAlign = "center";
+    totalRow.appendChild(totalLabelTd);
+
+    // 電力会社別合計金額
+    companies.forEach(company => {
+      const tierSum = usageSplit.reduce((sum, kwh, idx) => sum + company.rates[idx] * kwh, 0);
+      const fuelFee = usage * company.fuelAdjustment;
+      const reeneFee = usage * company.renewableFee;
+      const total = company.basic + tierSum + fuelFee + reeneFee;
+      const td = document.createElement('td');
+      td.textContent = total.toFixed(0);
+      totalRow.appendChild(td);
+    });
+
+    table.insertBefore(totalRow, table.children[1]); // 1行目の次に合計行を挿入
+
+    // 基本料金行（1列目と2列目はrowspanでまとめるのでここには表示しない）
+    // 代わりに基本料金は合計金額からも分かるため今回は割愛しています。
   }
-  // 初期表示
-  calculate();
 </script>
 
 </body>
