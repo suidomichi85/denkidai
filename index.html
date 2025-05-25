@@ -79,38 +79,27 @@
       }).join("");
       table.appendChild(totalRow);
 
-      // 内訳見出し
-      const detailHeader = document.createElement("tr");
-      detailHeader.innerHTML = `<td class='left' rowspan="4">内訳</td>` + companies.map(() => `<td></td>`).join("");
-      table.appendChild(detailHeader);
+      // 内訳と基本料金〜第3段階を一括で作成
+      const labels = ["基本料金", "第1段階 (0〜120kWh)", "第2段階 (121〜300kWh)", "第3段階 (301kWh〜)"];
 
-      const basicRow = document.createElement("tr");
-      basicRow.innerHTML = `<td class='left'>基本料金</td>` + companies.map(c => `<td>${c.basic?.toFixed(2) || 0}</td>`).join("");
-      table.appendChild(basicRow);
-
-      const stage1Row = document.createElement("tr");
-      stage1Row.innerHTML = `<td class='left'>第1段階 (0〜120kWh)</td>` + companies.map(c => {
-        if (c.calc) return `<td></td>`;
-        const kWh = Math.min(usage, 120);
-        return `<td>${(kWh * c.rates[0]).toFixed(2)}</td>`;
-      }).join("");
-      table.appendChild(stage1Row);
-
-      const stage2Row = document.createElement("tr");
-      stage2Row.innerHTML = `<td class='left'>第2段階 (121〜300kWh)</td>` + companies.map(c => {
-        if (c.calc) return `<td></td>`;
-        const kWh = Math.max(0, Math.min(usage - 120, 180));
-        return `<td>${(kWh * c.rates[1]).toFixed(2)}</td>`;
-      }).join("");
-      table.appendChild(stage2Row);
-
-      const stage3Row = document.createElement("tr");
-      stage3Row.innerHTML = `<td class='left'>第3段階 (301kWh〜)</td>` + companies.map(c => {
-        if (c.calc) return `<td></td>`;
-        const kWh = Math.max(0, usage - 300);
-        return `<td>${(kWh * c.rates[2]).toFixed(2)}</td>`;
-      }).join("");
-      table.appendChild(stage3Row);
+      labels.forEach((label, index) => {
+        const row = document.createElement("tr");
+        if (index === 0) {
+          row.innerHTML = `<td class='left' rowspan="4">内訳</td><td class='left'>${label}</td>` + companies.map(c => {
+            if (label === "基本料金") return `<td>${c.basic?.toFixed(2) || 0}</td>`;
+          }).join("");
+        } else {
+          row.innerHTML = `<td class='left'>${label}</td>` + companies.map(c => {
+            if (c.calc) return `<td></td>`;
+            const kWh =
+              index === 1 ? Math.min(usage, 120) :
+              index === 2 ? Math.max(0, Math.min(usage - 120, 180)) :
+              Math.max(0, usage - 300);
+            return `<td>${(kWh * c.rates[index - 1]).toFixed(2)}</td>`;
+          }).join("");
+        }
+        table.appendChild(row);
+      });
     }
   </script>
 </body>
